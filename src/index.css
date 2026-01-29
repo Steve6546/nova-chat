@@ -2,95 +2,111 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
-All colors MUST be HSL.
-*/
+/* Dark Monochrome Design System - Black/White/Slate */
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    /* Deep black background with white text - elegant dark theme */
+    --background: 0 0% 4%;
+    --foreground: 0 0% 98%;
 
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card: 0 0% 6%;
+    --card-foreground: 0 0% 98%;
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    --popover: 0 0% 8%;
+    --popover-foreground: 0 0% 98%;
 
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
+    /* Primary: Pure white accent */
+    --primary: 0 0% 98%;
+    --primary-foreground: 0 0% 4%;
 
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    /* Secondary: Dark gray surfaces */
+    --secondary: 0 0% 12%;
+    --secondary-foreground: 0 0% 90%;
 
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    /* Muted: Subtle grays */
+    --muted: 0 0% 14%;
+    --muted-foreground: 0 0% 55%;
 
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    /* Accent: Slate gray highlight */
+    --accent: 220 10% 16%;
+    --accent-foreground: 0 0% 98%;
 
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
+    /* Destructive: Muted red */
+    --destructive: 0 62% 45%;
+    --destructive-foreground: 0 0% 98%;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
+    --border: 0 0% 16%;
+    --input: 0 0% 16%;
+    --ring: 0 0% 50%;
 
-    --radius: 0.5rem;
+    --radius: 0.75rem;
 
-    --sidebar-background: 0 0% 98%;
+    /* Sidebar - slightly lighter for contrast */
+    --sidebar-background: 0 0% 6%;
+    --sidebar-foreground: 0 0% 85%;
+    --sidebar-primary: 0 0% 98%;
+    --sidebar-primary-foreground: 0 0% 4%;
+    --sidebar-accent: 0 0% 12%;
+    --sidebar-accent-foreground: 0 0% 98%;
+    --sidebar-border: 0 0% 14%;
+    --sidebar-ring: 0 0% 50%;
 
-    --sidebar-foreground: 240 5.3% 26.1%;
-
-    --sidebar-primary: 240 5.9% 10%;
-
-    --sidebar-primary-foreground: 0 0% 98%;
-
-    --sidebar-accent: 240 4.8% 95.9%;
-
-    --sidebar-accent-foreground: 240 5.9% 10%;
-
-    --sidebar-border: 220 13% 91%;
-
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    /* Chat-specific tokens */
+    --chat-user: 0 0% 16%;
+    --chat-assistant: 0 0% 10%;
+    --chat-code: 0 0% 8%;
+    --chat-code-border: 0 0% 20%;
+    
+    /* Model selector */
+    --model-gpt: 160 60% 40%;
+    --model-gemini: 220 60% 50%;
+    --model-image: 280 60% 50%;
   }
 
-  .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
+  /* Light mode - we default to dark, so this is optional override */
+  .light {
+    --background: 0 0% 100%;
+    --foreground: 0 0% 4%;
 
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 4%;
 
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 4%;
 
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
+    --primary: 0 0% 9%;
+    --primary-foreground: 0 0% 98%;
 
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
+    --secondary: 0 0% 96%;
+    --secondary-foreground: 0 0% 9%;
 
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
+    --muted: 0 0% 96%;
+    --muted-foreground: 0 0% 45%;
 
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
+    --accent: 0 0% 96%;
+    --accent-foreground: 0 0% 9%;
 
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 98%;
 
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --border: 0 0% 90%;
+    --input: 0 0% 90%;
+    --ring: 0 0% 4%;
+
+    --sidebar-background: 0 0% 98%;
+    --sidebar-foreground: 0 0% 26%;
+    --sidebar-primary: 0 0% 9%;
+    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-accent: 0 0% 96%;
+    --sidebar-accent-foreground: 0 0% 9%;
+    --sidebar-border: 0 0% 91%;
+    --sidebar-ring: 0 0% 50%;
+
+    --chat-user: 0 0% 96%;
+    --chat-assistant: 0 0% 100%;
+    --chat-code: 0 0% 96%;
+    --chat-code-border: 0 0% 85%;
   }
 }
 
@@ -100,6 +116,238 @@ All colors MUST be HSL.
   }
 
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground antialiased;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   }
+
+  /* Smooth scrollbar for dark theme */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: hsl(var(--background));
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: hsl(var(--border));
+    border-radius: 4px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--muted-foreground));
+  }
+}
+
+@layer components {
+  /* Chat message bubbles */
+  .chat-message-user {
+    @apply bg-[hsl(var(--chat-user))] rounded-2xl rounded-br-md;
+  }
+
+  .chat-message-assistant {
+    @apply bg-[hsl(var(--chat-assistant))] rounded-2xl rounded-bl-md border border-border;
+  }
+
+  /* Code block styling */
+  .code-block {
+    @apply bg-[hsl(var(--chat-code))] border border-[hsl(var(--chat-code-border))] rounded-xl overflow-hidden;
+  }
+
+  .code-block-header {
+    @apply flex items-center justify-between px-4 py-2 bg-[hsl(var(--border))] text-sm text-muted-foreground;
+  }
+
+  .code-block-content {
+    @apply p-4 overflow-x-auto text-sm font-mono;
+  }
+
+  /* Model indicator badges */
+  .model-badge {
+    @apply inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium;
+  }
+
+  .model-badge-gpt {
+    @apply bg-[hsl(var(--model-gpt)/0.15)] text-[hsl(var(--model-gpt))];
+  }
+
+  .model-badge-gemini {
+    @apply bg-[hsl(var(--model-gemini)/0.15)] text-[hsl(var(--model-gemini))];
+  }
+
+  .model-badge-image {
+    @apply bg-[hsl(var(--model-image)/0.15)] text-[hsl(var(--model-image))];
+  }
+
+  /* Typing indicator animation */
+  .typing-indicator {
+    @apply flex gap-1;
+  }
+
+  .typing-indicator span {
+    @apply w-2 h-2 rounded-full bg-muted-foreground;
+    animation: typing 1.4s ease-in-out infinite;
+  }
+
+  .typing-indicator span:nth-child(2) {
+    animation-delay: 0.2s;
+  }
+
+  .typing-indicator span:nth-child(3) {
+    animation-delay: 0.4s;
+  }
+
+  /* Sidebar hover effect */
+  .sidebar-item {
+    @apply relative overflow-hidden transition-colors duration-200;
+  }
+
+  .sidebar-item::before {
+    @apply absolute inset-0 bg-accent opacity-0 transition-opacity duration-200;
+    content: '';
+  }
+
+  .sidebar-item:hover::before {
+    @apply opacity-100;
+  }
+
+  /* Composer styling */
+  .composer-container {
+    @apply relative bg-card border border-border rounded-2xl transition-all duration-200;
+  }
+
+  .composer-container:focus-within {
+    @apply border-primary/30 ring-1 ring-primary/20;
+  }
+}
+
+@layer utilities {
+  /* Glass effect for overlays */
+  .glass {
+    @apply backdrop-blur-lg bg-background/80;
+  }
+
+  /* Gradient text */
+  .gradient-text {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-foreground to-muted-foreground;
+  }
+
+  /* Smooth entrance animation */
+  .animate-in {
+    animation: animateIn 0.3s ease-out forwards;
+  }
+
+  /* Typewriter effect for AI responses */
+  .typewriter {
+    overflow: hidden;
+    border-right: 2px solid hsl(var(--muted-foreground));
+    animation: typing-cursor 1s step-end infinite;
+  }
+}
+
+@keyframes typing {
+  0%, 60%, 100% {
+    opacity: 0.3;
+    transform: translateY(0);
+  }
+  30% {
+    opacity: 1;
+    transform: translateY(-4px);
+  }
+}
+
+@keyframes animateIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes typing-cursor {
+  from, to {
+    border-color: transparent;
+  }
+  50% {
+    border-color: hsl(var(--muted-foreground));
+  }
+}
+
+/* Prism.js dark theme override */
+code[class*="language-"],
+pre[class*="language-"] {
+  color: hsl(var(--foreground));
+  background: none;
+  font-family: 'Fira Code', 'Consolas', Monaco, 'Andale Mono', 'Ubuntu Mono', monospace;
+  font-size: 0.875rem;
+  text-align: left;
+  white-space: pre;
+  word-spacing: normal;
+  word-break: normal;
+  word-wrap: normal;
+  line-height: 1.6;
+  tab-size: 2;
+  hyphens: none;
+}
+
+.token.comment,
+.token.prolog,
+.token.doctype,
+.token.cdata {
+  color: hsl(var(--muted-foreground));
+}
+
+.token.punctuation {
+  color: hsl(0 0% 70%);
+}
+
+.token.property,
+.token.tag,
+.token.constant,
+.token.symbol,
+.token.deleted {
+  color: hsl(0 75% 65%);
+}
+
+.token.boolean,
+.token.number {
+  color: hsl(35 80% 65%);
+}
+
+.token.selector,
+.token.attr-name,
+.token.string,
+.token.char,
+.token.builtin,
+.token.inserted {
+  color: hsl(120 40% 60%);
+}
+
+.token.operator,
+.token.entity,
+.token.url,
+.language-css .token.string,
+.style .token.string,
+.token.variable {
+  color: hsl(200 70% 65%);
+}
+
+.token.atrule,
+.token.attr-value,
+.token.function,
+.token.class-name {
+  color: hsl(50 80% 65%);
+}
+
+.token.keyword {
+  color: hsl(280 70% 70%);
+}
+
+.token.regex,
+.token.important {
+  color: hsl(35 80% 65%);
 }
