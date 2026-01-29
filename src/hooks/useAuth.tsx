@@ -44,11 +44,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signUp = async (email: string, password: string) => {
+    // Determine the redirect URL safely
+    const redirectTo = typeof window !== 'undefined' ? window.location.origin : undefined;
+
     const { error } = await supabase.auth.signUp({
       email,
       password,
       options: {
-        emailRedirectTo: window.location.origin,
+        emailRedirectTo: redirectTo,
       },
     });
     return { error: error as Error | null };
