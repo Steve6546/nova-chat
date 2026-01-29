@@ -17,11 +17,15 @@ export default function AuthPage() {
     e.preventDefault();
     setLoading(true);
 
+    const trimmedEmail = email.trim();
+    const trimmedPassword = password.trim();
+
     const { error } = isSignUp
-      ? await signUp(email, password)
-      : await signIn(email, password);
+      ? await signUp(trimmedEmail, trimmedPassword)
+      : await signIn(trimmedEmail, trimmedPassword);
 
     if (error) {
+      console.error('Auth error:', error);
       toast({
         title: 'Error',
         description: error.message,
