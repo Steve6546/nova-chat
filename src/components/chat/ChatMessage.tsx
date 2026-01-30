@@ -91,7 +91,12 @@ export function ChatMessage({ message, isStreaming }: ChatMessageProps) {
             </ReactMarkdown>
             
             {isStreaming && (
-              <span className="inline-block w-2 h-4 ml-1 bg-primary animate-pulse-subtle" />
+              <motion.span 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: [0.4, 1, 0.4] }}
+                transition={{ duration: 1, repeat: Infinity }}
+                className="inline-block w-2 h-4 ml-1 bg-primary rounded-sm"
+              />
             )}
           </div>
         )}

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { IconChevronDown, IconSparkles, IconBrain, IconPhoto } from '@tabler/icons-react';
+import { IconChevronDown, IconCheck, IconBrain, IconBolt, IconPhoto, IconSparkles } from '@tabler/icons-react';
 import { AI_MODELS, AIModel } from '@/types/chat';
 import { cn } from '@/lib/utils';
 
@@ -20,21 +20,12 @@ export function ModelSelector({ selectedModel, onSelectModel }: ModelSelectorPro
         return <IconBrain className="w-4 h-4" />;
       case 'image':
         return <IconPhoto className="w-4 h-4" />;
+      case 'gemini':
+        return model.id.includes('flash') 
+          ? <IconBolt className="w-4 h-4" /> 
+          : <IconSparkles className="w-4 h-4" />;
       default:
         return <IconSparkles className="w-4 h-4" />;
-    }
-  };
-
-  const getBadgeClass = (badge: string) => {
-    switch (badge) {
-      case 'gpt':
-        return 'model-badge-gpt';
-      case 'gemini':
-        return 'model-badge-gemini';
-      case 'image':
-        return 'model-badge-image';
-      default:
-        return '';
     }
   };
 
@@ -48,9 +39,9 @@ export function ModelSelector({ selectedModel, onSelectModel }: ModelSelectorPro
           "focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background"
         )}
       >
-        <span className={cn("model-badge", getBadgeClass(currentModel.badge))}>
+        <span className="flex items-center gap-2 text-sm font-medium text-foreground">
           {getModelIcon(currentModel)}
-          {currentModel.name}
+          <span className="hidden sm:inline">{currentModel.name}</span>
         </span>
         <IconChevronDown 
           className={cn(
@@ -76,7 +67,7 @@ export function ModelSelector({ selectedModel, onSelectModel }: ModelSelectorPro
               exit={{ opacity: 0, y: -10, scale: 0.95 }}
               transition={{ duration: 0.15 }}
               className={cn(
-                "absolute top-full left-0 mt-2 z-50 min-w-[280px]",
+                "absolute top-full right-0 mt-2 z-50 min-w-[280px]",
                 "bg-popover border border-border rounded-xl shadow-xl overflow-hidden"
               )}
             >
@@ -98,7 +89,7 @@ export function ModelSelector({ selectedModel, onSelectModel }: ModelSelectorPro
                       selectedModel === model.id && "bg-accent"
                     )}
                   >
-                    <span className={cn("model-badge mt-0.5", getBadgeClass(model.badge))}>
+                    <span className="mt-0.5 text-muted-foreground">
                       {getModelIcon(model)}
                     </span>
                     <div className="flex-1 text-left">
@@ -106,10 +97,7 @@ export function ModelSelector({ selectedModel, onSelectModel }: ModelSelectorPro
                       <p className="text-sm text-muted-foreground">{model.description}</p>
                     </div>
                     {selectedModel === model.id && (
-                      <motion.div
-                        layoutId="model-check"
-                        className="w-2 h-2 mt-2 rounded-full bg-primary"
-                      />
+                      <IconCheck className="w-4 h-4 mt-1 text-primary" />
                     )}
                   </button>
                 ))}
