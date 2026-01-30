@@ -198,6 +198,56 @@ export function useConversations() {
     }
   }, [currentConversation, messages.length, updateConversationTitle]);
 
+  // Create an assistant draft message (stable id for streaming UI)
+  const createAssistantDraft = useCallback(async () => {
+    if (!currentConversation) return null;
+
+    try {
+      const { data, error } = await supabase
+        .from('messages')
+        .insert({
+          conversation_id: currentConversation.id,
+          role: 'assistant',
+          content: '',
+          content_type: 'text',
+          metadata: { draft: true },
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      const message = toMessage(data);
+      setMessages(prev => {
+        if (prev.some(m => m.id === message.id)) return prev;
+        return [...prev, message];
+      });
+
+      return message;
+    } catch (error) {
+      console.error('Error creating assistant draft:', error);
+      return null;
+    }
+  }, [currentConversation]);
+
+  // Update message content in DB + local state (used to finalize streaming)
+  const updateMessageContent = useCallback(async (messageId: string, content: string) => {
+    try {
+      const { error } = await supabase
+        .from('messages')
+        .update({ content, metadata: null })
+        .eq('id', messageId);
+
+      if (error) throw error;
+
+      setMessages(prev => prev.map(m => (m.id === messageId ? { ...m, content } : m)));
+      return true;
+    } catch (error) {
+      console.error('Error updating message content:', error);
+      return false;
+    }
+  }, []);
+
   // Filter conversations by search
   const filteredConversations = conversations.filter(c => 
     c.title.toLowerCase().includes(searchQuery.toLowerCase())
@@ -249,6 +299,8 @@ export function useConversations() {
     selectConversation,
     deleteConversation,
     addMessage,
+    createAssistantDraft,
+    updateMessageContent,
     setMessages,
   };
 }
