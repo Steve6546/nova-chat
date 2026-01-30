@@ -1,4 +1,4 @@
-import { IconMenu2, IconLogout } from '@tabler/icons-react';
+import { IconMenu2, IconLogout, IconLayoutSidebarLeftCollapse, IconLayoutSidebarLeftExpand } from '@tabler/icons-react';
 import { ModelSelector } from './ModelSelector';
 import { useAuth } from '@/hooks/useAuth';
 import { cn } from '@/lib/utils';
@@ -25,12 +25,15 @@ export function ChatHeader({
           onClick={onToggleSidebar}
           className={cn(
             "p-2 rounded-lg transition-colors",
-            "hover:bg-muted",
-            sidebarOpen && "bg-muted"
+            "hover:bg-muted"
           )}
-          aria-label="Toggle sidebar"
+          aria-label={sidebarOpen ? "Close sidebar" : "Open sidebar"}
         >
-          <IconMenu2 className="w-5 h-5" />
+          {sidebarOpen ? (
+            <IconLayoutSidebarLeftCollapse className="w-5 h-5" />
+          ) : (
+            <IconLayoutSidebarLeftExpand className="w-5 h-5" />
+          )}
         </button>
         
         <div className="flex items-center gap-2">
