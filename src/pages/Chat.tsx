@@ -47,7 +47,7 @@ export default function ChatPage() {
     }
 
     // Add user message
-    await addMessage('user', content);
+    await addMessage('user', content, 'text', conversationId);
 
     // Start streaming response
     setIsStreaming(true);
@@ -137,7 +137,9 @@ export default function ChatPage() {
 
       // Add assistant message to database
       if (fullContent) {
-        await addMessage('assistant', fullContent);
+        setStreamingContent('');
+        setIsStreaming(false);
+        await addMessage('assistant', fullContent, 'text', conversationId);
       }
     } catch (error) {
       console.error('Error sending message:', error);
@@ -163,7 +165,7 @@ export default function ChatPage() {
     }
 
     // Add user message
-    await addMessage('user', `Generate image: ${prompt}`);
+    await addMessage('user', `Generate image: ${prompt}`, 'text', conversationId);
     setIsStreaming(true);
 
     try {
@@ -174,7 +176,8 @@ export default function ChatPage() {
       if (error) throw error;
 
       if (data?.imageUrl) {
-        await addMessage('assistant', data.imageUrl, 'image');
+        setIsStreaming(false);
+        await addMessage('assistant', data.imageUrl, 'image', conversationId);
       }
     } catch (error) {
       console.error('Error generating image:', error);
@@ -196,14 +199,21 @@ export default function ChatPage() {
   // Create streaming message for display
   const displayMessages = [...messages];
   if (isStreaming && streamingContent) {
-    displayMessages.push({
-      id: 'streaming',
-      conversation_id: currentConversation?.id || '',
-      role: 'assistant',
-      content: streamingContent,
-      content_type: 'text',
-      created_at: new Date().toISOString(),
-    } as Message);
+    // Only show streaming message if it's not already in the messages list
+    const isDuplicate = messages.some(
+      m => m.role === 'assistant' && m.content === streamingContent
+    );
+
+    if (!isDuplicate) {
+      displayMessages.push({
+        id: 'streaming',
+        conversation_id: currentConversation?.id || '',
+        role: 'assistant',
+        content: streamingContent,
+        content_type: 'text',
+        created_at: new Date().toISOString(),
+      } as Message);
+    }
   }
 
   return (
