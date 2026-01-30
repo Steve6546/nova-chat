@@ -164,15 +164,17 @@ export function useConversations() {
   const addMessage = useCallback(async (
     role: 'user' | 'assistant',
     content: string,
-    contentType: 'text' | 'code' | 'image' = 'text'
+    contentType: 'text' | 'code' | 'image' = 'text',
+    conversationIdOverride?: string
   ) => {
-    if (!currentConversation) return null;
+    const conversationId = conversationIdOverride || currentConversation?.id;
+    if (!conversationId) return null;
 
     try {
       const { data, error } = await supabase
         .from('messages')
         .insert({
-          conversation_id: currentConversation.id,
+          conversation_id: conversationId,
           role,
           content,
           content_type: contentType,
@@ -188,7 +190,7 @@ export function useConversations() {
       // Update conversation title if it's the first user message
       if (role === 'user' && messages.length === 0) {
         const title = content.slice(0, 50) + (content.length > 50 ? '...' : '');
-        await updateConversationTitle(currentConversation.id, title);
+        await updateConversationTitle(conversationId, title);
       }
 
       return message;
@@ -197,6 +199,52 @@ export function useConversations() {
       return null;
     }
   }, [currentConversation, messages.length, updateConversationTitle]);
+
+  // Create an empty assistant message draft
+  const createAssistantDraft = useCallback(async (conversationIdOverride?: string) => {
+    const conversationId = conversationIdOverride || currentConversation?.id;
+    if (!conversationId) return null;
+
+    try {
+      const { data, error } = await supabase
+        .from('messages')
+        .insert({
+          conversation_id: conversationId,
+          role: 'assistant',
+          content: '',
+          content_type: 'text',
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      const message = toMessage(data);
+      setMessages(prev => [...prev, message]);
+      return message;
+    } catch (error) {
+      console.error('Error creating assistant draft:', error);
+      return null;
+    }
+  }, [currentConversation]);
+
+  // Update message content
+  const updateMessageContent = useCallback(async (id: string, content: string) => {
+    try {
+      const { error } = await supabase
+        .from('messages')
+        .update({ content })
+        .eq('id', id);
+
+      if (error) throw error;
+
+      setMessages(prev =>
+        prev.map(m => m.id === id ? { ...m, content } : m)
+      );
+    } catch (error) {
+      console.error('Error updating message content:', error);
+    }
+  }, []);
 
   // Filter conversations by search
   const filteredConversations = conversations.filter(c => 
@@ -249,6 +297,8 @@ export function useConversations() {
     selectConversation,
     deleteConversation,
     addMessage,
+    createAssistantDraft,
+    updateMessageContent,
     setMessages,
   };
 }

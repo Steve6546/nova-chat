@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { ChatHeader } from '@/components/chat/ChatHeader';
 import { ConversationSidebar } from '@/components/chat/ConversationSidebar';
@@ -14,7 +14,12 @@ export default function ChatPage() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [selectedModel, setSelectedModel] = useState(DEFAULT_MODEL);
   const [isStreaming, setIsStreaming] = useState(false);
-  const [streamingContent, setStreamingContent] = useState('');
+  const [streamingMessageId, setStreamingMessageId] = useState<string | null>(null);
+
+  const abortRef = useRef<AbortController | null>(null);
+  const rafRef = useRef<number | null>(null);
+  const latestContentRef = useRef('');
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
@@ -28,16 +33,44 @@ export default function ChatPage() {
     selectConversation,
     deleteConversation,
     addMessage,
+    createAssistantDraft,
+    updateMessageContent,
     setMessages,
   } = useConversations();
 
-  // Scroll to bottom when messages change
+  const lastMessageId = useMemo(() => messages[messages.length - 1]?.id ?? null, [messages]);
+
+  // Scroll to bottom when a new message is appended
   useEffect(() => {
+    if (!lastMessageId) return;
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, streamingContent]);
+  }, [lastMessageId]);
+
+  // Cleanup any in-flight streaming on unmount
+  useEffect(() => {
+    return () => {
+      abortRef.current?.abort();
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    };
+  }, []);
+
+  const updateDraftContentThrottled = (messageId: string, content: string) => {
+    latestContentRef.current = content;
+    if (rafRef.current) return;
+
+    rafRef.current = requestAnimationFrame(() => {
+      rafRef.current = null;
+      const next = latestContentRef.current;
+
+      setMessages(prev => prev.map(m => (m.id === messageId ? { ...m, content: next } : m)));
+      messagesEndRef.current?.scrollIntoView({ behavior: 'auto' });
+    });
+  };
 
   // Handle sending a message
   const handleSendMessage = async (content: string) => {
+    if (isStreaming) return;
+
     // Create conversation if none exists
     let conversationId = currentConversation?.id;
     if (!conversationId) {
@@ -46,12 +79,34 @@ export default function ChatPage() {
       conversationId = newConvo.id;
     }
 
-    // Add user message
-    await addMessage('user', content);
+    // Snapshot history BEFORE we mutate local message state
+    const historyForRequest = [...messages, { role: 'user' as const, content }].map(m => ({
+      role: m.role,
+      content: m.content,
+    }));
 
-    // Start streaming response
+    // Persist user message - using override to fix first-message bug
+    await addMessage('user', content, 'text', conversationId);
+
+    // Create assistant draft message (stable identity during + after stream)
+    const draft = await createAssistantDraft(conversationId);
+    if (!draft) {
+      toast({
+        title: 'Error',
+        description: 'Failed to create assistant message. Please try again.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     setIsStreaming(true);
-    setStreamingContent('');
+    setStreamingMessageId(draft.id);
+
+    const controller = new AbortController();
+    abortRef.current = controller;
+
+    let textBuffer = '';
+    let fullContent = '';
 
     try {
       const response = await fetch(
@@ -63,13 +118,11 @@ export default function ChatPage() {
             Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
           },
           body: JSON.stringify({
-            messages: [...messages, { role: 'user', content }].map(m => ({
-              role: m.role,
-              content: m.content,
-            })),
+            messages: historyForRequest,
             model: selectedModel,
             conversationId,
           }),
+          signal: controller.signal,
         }
       );
 
@@ -80,7 +133,6 @@ export default function ChatPage() {
             description: 'Too many requests. Please wait a moment and try again.',
             variant: 'destructive',
           });
-          setIsStreaming(false);
           return;
         }
         if (response.status === 402) {
@@ -89,71 +141,72 @@ export default function ChatPage() {
             description: 'Please add credits to your workspace to continue.',
             variant: 'destructive',
           });
-          setIsStreaming(false);
           return;
         }
         throw new Error('Failed to get response');
       }
 
       const reader = response.body?.getReader();
+      if (!reader) throw new Error('No response body');
+
       const decoder = new TextDecoder();
-      let textBuffer = '';
-      let fullContent = '';
 
-      if (reader) {
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
 
-          textBuffer += decoder.decode(value, { stream: true });
+        textBuffer += decoder.decode(value, { stream: true });
 
-          let newlineIndex: number;
-          while ((newlineIndex = textBuffer.indexOf('\n')) !== -1) {
-            let line = textBuffer.slice(0, newlineIndex);
-            textBuffer = textBuffer.slice(newlineIndex + 1);
+        let newlineIndex: number;
+        while ((newlineIndex = textBuffer.indexOf('\n')) !== -1) {
+          let line = textBuffer.slice(0, newlineIndex);
+          textBuffer = textBuffer.slice(newlineIndex + 1);
 
-            if (line.endsWith('\r')) line = line.slice(0, -1);
-            if (line.startsWith(':') || line.trim() === '') continue;
-            if (!line.startsWith('data: ')) continue;
+          if (line.endsWith('\r')) line = line.slice(0, -1);
+          if (line.startsWith(':') || line.trim() === '') continue;
+          if (!line.startsWith('data: ')) continue;
 
-            const jsonStr = line.slice(6).trim();
-            if (jsonStr === '[DONE]') continue;
+          const jsonStr = line.slice(6).trim();
+          if (jsonStr === '[DONE]') continue;
 
-            try {
-              const parsed = JSON.parse(jsonStr);
-              const delta = parsed.choices?.[0]?.delta?.content;
-              if (delta) {
-                fullContent += delta;
-                setStreamingContent(fullContent);
-              }
-            } catch {
-              // Re-buffer incomplete JSON
-              textBuffer = line + '\n' + textBuffer;
-              break;
-            }
+          try {
+            const parsed = JSON.parse(jsonStr);
+            const delta = parsed.choices?.[0]?.delta?.content;
+            if (!delta) continue;
+
+            fullContent += delta;
+            updateDraftContentThrottled(draft.id, fullContent);
+          } catch {
+            // Re-buffer incomplete JSON
+            textBuffer = line + '\n' + textBuffer;
+            break;
           }
         }
       }
 
-      // Add assistant message to database
       if (fullContent) {
-        await addMessage('assistant', fullContent);
+        await updateMessageContent(draft.id, fullContent);
       }
     } catch (error) {
-      console.error('Error sending message:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to get AI response. Please try again.',
-        variant: 'destructive',
-      });
+      if ((error as any)?.name !== 'AbortError') {
+        console.error('Error sending message:', error);
+        toast({
+          title: 'Error',
+          description: 'Failed to get AI response. Please try again.',
+          variant: 'destructive',
+        });
+      }
     } finally {
+      abortRef.current = null;
       setIsStreaming(false);
-      setStreamingContent('');
+      setStreamingMessageId(null);
     }
   };
 
   // Handle image generation request
   const handleImageRequest = async (prompt: string) => {
+    if (isStreaming) return;
+
     // Create conversation if none exists
     let conversationId = currentConversation?.id;
     if (!conversationId) {
@@ -162,8 +215,8 @@ export default function ChatPage() {
       conversationId = newConvo.id;
     }
 
-    // Add user message
-    await addMessage('user', `Generate image: ${prompt}`);
+    // Add user message - using override to fix first-message bug
+    await addMessage('user', `Generate image: ${prompt}`, 'text', conversationId);
     setIsStreaming(true);
 
     try {
@@ -174,7 +227,7 @@ export default function ChatPage() {
       if (error) throw error;
 
       if (data?.imageUrl) {
-        await addMessage('assistant', data.imageUrl, 'image');
+        await addMessage('assistant', data.imageUrl, 'image', conversationId);
       }
     } catch (error) {
       console.error('Error generating image:', error);
@@ -193,18 +246,9 @@ export default function ChatPage() {
     await handleSendMessage(prompt);
   };
 
-  // Create streaming message for display
-  const displayMessages = [...messages];
-  if (isStreaming && streamingContent) {
-    displayMessages.push({
-      id: 'streaming',
-      conversation_id: currentConversation?.id || '',
-      role: 'assistant',
-      content: streamingContent,
-      content_type: 'text',
-      created_at: new Date().toISOString(),
-    } as Message);
-  }
+  const streamingDraft = streamingMessageId
+    ? messages.find(m => m.id === streamingMessageId)
+    : null;
 
   return (
     <div className="h-screen flex overflow-hidden bg-background">
@@ -235,18 +279,16 @@ export default function ChatPage() {
         <div className="flex-1 overflow-y-auto">
           {currentConversation ? (
             <div className="max-w-4xl mx-auto">
-              {displayMessages.map((message, index) => (
+              {messages.map((message) => (
                 <ChatMessage
                   key={message.id}
                   message={message}
-                  isStreaming={message.id === 'streaming'}
+                  isStreaming={message.id === streamingMessageId}
                 />
               ))}
-              
-              {isStreaming && !streamingContent && (
-                <TypingIndicator />
-              )}
-              
+
+              {isStreaming && streamingDraft && !streamingDraft.content && <TypingIndicator />}
+
               <div ref={messagesEndRef} />
             </div>
           ) : (
