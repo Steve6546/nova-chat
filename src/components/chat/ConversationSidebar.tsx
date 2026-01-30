@@ -31,7 +31,7 @@ export function ConversationSidebar({
       <div className={cn('fixed inset-0 z-40 bg-background/80 backdrop-blur-sm transition-opacity duration-300 ease-out', isOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none')} onClick={onClose} aria-hidden />
 
       {/* Sidebar (always mounted). Animate ONLY with transform. */}
-      <aside className={cn("fixed left-0 top-0 bottom-0 z-50 w-72 bg-sidebar border-r border-sidebar-border transform-gpu transition-transform duration-300 ease-out will-change-transform items-center justify-start flex flex-col", isOpen ? 'translate-x-0' : '-translate-x-full')}>
+      <aside className={cn("fixed left-0 top-0 bottom-0 z-50 w-72 bg-sidebar border-r border-sidebar-border transform-gpu transition-transform duration-300 ease-out will-change-transform flex-col flex items-start justify-center", isOpen ? 'translate-x-0' : '-translate-x-full')}>
         {/* Header */}
         <div className="p-4 border-b flex-row flex items-center justify-between border-primary-foreground">
           <h2 className="font-semibold text-sidebar-foreground">Chats</h2>
