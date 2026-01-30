@@ -164,15 +164,17 @@ export function useConversations() {
   const addMessage = useCallback(async (
     role: 'user' | 'assistant',
     content: string,
-    contentType: 'text' | 'code' | 'image' = 'text'
+    contentType: 'text' | 'code' | 'image' = 'text',
+    conversationIdOverride?: string
   ) => {
-    if (!currentConversation) return null;
+    const conversationId = conversationIdOverride || currentConversation?.id;
+    if (!conversationId) return null;
 
     try {
       const { data, error } = await supabase
         .from('messages')
         .insert({
-          conversation_id: currentConversation.id,
+          conversation_id: conversationId,
           role,
           content,
           content_type: contentType,
@@ -188,7 +190,7 @@ export function useConversations() {
       // Update conversation title if it's the first user message
       if (role === 'user' && messages.length === 0) {
         const title = content.slice(0, 50) + (content.length > 50 ? '...' : '');
-        await updateConversationTitle(currentConversation.id, title);
+        await updateConversationTitle(conversationId, title);
       }
 
       return message;
