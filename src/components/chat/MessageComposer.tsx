@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, forwardRef } from 'react';
+import { useState, useRef, useEffect, forwardRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   IconSend, 
@@ -7,7 +7,11 @@ import {
   IconPhoto, 
   IconX,
   IconUpload,
-  IconSparkles
+  IconSparkles,
+  IconChevronLeft,
+  IconChevronRight,
+  IconTrash,
+  IconPlus
 } from '@tabler/icons-react';
 import { cn } from '@/lib/utils';
 
@@ -16,6 +20,12 @@ interface MessageComposerProps {
   onImageRequest?: (prompt: string, imageFile?: File) => void;
   disabled?: boolean;
   placeholder?: string;
+}
+
+interface UploadedImage {
+  file: File;
+  preview: string;
+  id: string;
 }
 
 // Web Speech API types
@@ -61,8 +71,8 @@ export const MessageComposer = forwardRef<HTMLDivElement, MessageComposerProps>(
     const [isRecording, setIsRecording] = useState(false);
     const [showImageModal, setShowImageModal] = useState(false);
     const [imagePrompt, setImagePrompt] = useState('');
-    const [uploadedImage, setUploadedImage] = useState<File | null>(null);
-    const [imagePreview, setImagePreview] = useState<string | null>(null);
+    const [uploadedImages, setUploadedImages] = useState<UploadedImage[]>([]);
+    const [currentImageIndex, setCurrentImageIndex] = useState(0);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const recognitionRef = useRef<SpeechRecognitionInstance | null>(null);
@@ -101,6 +111,22 @@ export const MessageComposer = forwardRef<HTMLDivElement, MessageComposerProps>(
       }
     }, []);
 
+    // Keyboard navigation for images
+    const handleKeyNavigation = useCallback((e: KeyboardEvent) => {
+      if (!showImageModal || uploadedImages.length <= 1) return;
+      
+      if (e.key === 'ArrowLeft') {
+        setCurrentImageIndex(prev => prev > 0 ? prev - 1 : uploadedImages.length - 1);
+      } else if (e.key === 'ArrowRight') {
+        setCurrentImageIndex(prev => prev < uploadedImages.length - 1 ? prev + 1 : 0);
+      }
+    }, [showImageModal, uploadedImages.length]);
+
+    useEffect(() => {
+      window.addEventListener('keydown', handleKeyNavigation);
+      return () => window.removeEventListener('keydown', handleKeyNavigation);
+    }, [handleKeyNavigation]);
+
     const handleSubmit = (e?: React.FormEvent) => {
       e?.preventDefault();
       if (message.trim() && !disabled) {
@@ -131,29 +157,50 @@ export const MessageComposer = forwardRef<HTMLDivElement, MessageComposerProps>(
     };
 
     const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-      const file = e.target.files?.[0];
-      if (file && file.type.startsWith('image/')) {
-        setUploadedImage(file);
+      const files = Array.from(e.target.files || []);
+      const imageFiles = files.filter(file => file.type.startsWith('image/'));
+      
+      imageFiles.forEach(file => {
         const reader = new FileReader();
-        reader.onload = () => setImagePreview(reader.result as string);
+        reader.onload = () => {
+          const newImage: UploadedImage = {
+            file,
+            preview: reader.result as string,
+            id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+          };
+          setUploadedImages(prev => [...prev, newImage]);
+        };
         reader.readAsDataURL(file);
-      }
-    };
-
-    const handleRemoveImage = () => {
-      setUploadedImage(null);
-      setImagePreview(null);
+      });
+      
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
     };
 
+    const handleRemoveImage = (id: string) => {
+      setUploadedImages(prev => {
+        const newImages = prev.filter(img => img.id !== id);
+        if (currentImageIndex >= newImages.length && newImages.length > 0) {
+          setCurrentImageIndex(newImages.length - 1);
+        }
+        return newImages;
+      });
+    };
+
+    const handleRemoveCurrentImage = () => {
+      if (uploadedImages[currentImageIndex]) {
+        handleRemoveImage(uploadedImages[currentImageIndex].id);
+      }
+    };
+
     const handleImageGenerate = () => {
       if (imagePrompt.trim() && onImageRequest) {
-        onImageRequest(imagePrompt.trim(), uploadedImage || undefined);
+        const currentImage = uploadedImages[currentImageIndex];
+        onImageRequest(imagePrompt.trim(), currentImage?.file || undefined);
         setImagePrompt('');
-        setUploadedImage(null);
-        setImagePreview(null);
+        setUploadedImages([]);
+        setCurrentImageIndex(0);
         setShowImageModal(false);
       }
     };
@@ -161,8 +208,16 @@ export const MessageComposer = forwardRef<HTMLDivElement, MessageComposerProps>(
     const handleCloseModal = () => {
       setShowImageModal(false);
       setImagePrompt('');
-      setUploadedImage(null);
-      setImagePreview(null);
+      setUploadedImages([]);
+      setCurrentImageIndex(0);
+    };
+
+    const navigateImage = (direction: 'prev' | 'next') => {
+      if (direction === 'prev') {
+        setCurrentImageIndex(prev => prev > 0 ? prev - 1 : uploadedImages.length - 1);
+      } else {
+        setCurrentImageIndex(prev => prev < uploadedImages.length - 1 ? prev + 1 : 0);
+      }
     };
 
     return (
@@ -265,89 +320,174 @@ export const MessageComposer = forwardRef<HTMLDivElement, MessageComposerProps>(
               onClick={handleCloseModal}
             >
               <motion.div
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.95 }}
+                initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                transition={{ type: "spring", damping: 25, stiffness: 300 }}
                 onClick={(e) => e.stopPropagation()}
-                className="w-full max-w-lg bg-card border border-border rounded-2xl p-6 shadow-xl"
+                className="w-full max-w-lg bg-card border border-border rounded-2xl shadow-2xl overflow-hidden"
               >
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-2">
-                    <IconSparkles className="w-5 h-5 text-primary" />
-                    <h3 className="text-lg font-semibold">Generate Image</h3>
+                {/* Modal Header */}
+                <div className="flex items-center justify-between px-5 py-4 border-b border-border bg-muted/30">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 rounded-xl bg-primary/10">
+                      <IconSparkles className="w-5 h-5 text-primary" />
+                    </div>
+                    <div>
+                      <h3 className="text-base font-semibold">Generate Image</h3>
+                      <p className="text-xs text-muted-foreground">Create stunning visuals with AI</p>
+                    </div>
                   </div>
                   <button
                     onClick={handleCloseModal}
-                    className="p-1 rounded-lg hover:bg-muted transition-colors"
+                    className="p-2 rounded-lg hover:bg-muted transition-colors"
                   >
                     <IconX className="w-5 h-5" />
                   </button>
                 </div>
-                
-                {/* Image Upload Section */}
-                <div className="mb-4">
-                  <label className="block text-sm font-medium text-muted-foreground mb-2">
-                    Reference Image (Optional)
-                  </label>
-                  {imagePreview ? (
-                    <div className="relative inline-block">
-                      <img 
-                        src={imagePreview} 
-                        alt="Upload preview" 
-                        className="w-32 h-32 object-cover rounded-lg border border-border"
-                      />
+
+                <div className="p-5 space-y-5">
+                  {/* Image Gallery Section */}
+                  <div>
+                    <label className="block text-sm font-medium text-muted-foreground mb-3">
+                      Reference Images (Optional)
+                    </label>
+                    
+                    {uploadedImages.length > 0 ? (
+                      <div className="space-y-3">
+                        {/* Main Image Display with Navigation */}
+                        <div className="relative aspect-video bg-muted/50 rounded-xl overflow-hidden border border-border">
+                          <AnimatePresence mode="wait">
+                            <motion.img
+                              key={uploadedImages[currentImageIndex]?.id}
+                              src={uploadedImages[currentImageIndex]?.preview}
+                              alt="Reference preview"
+                              initial={{ opacity: 0, x: 50 }}
+                              animate={{ opacity: 1, x: 0 }}
+                              exit={{ opacity: 0, x: -50 }}
+                              transition={{ duration: 0.2 }}
+                              className="w-full h-full object-contain"
+                            />
+                          </AnimatePresence>
+                          
+                          {/* Navigation Arrows */}
+                          {uploadedImages.length > 1 && (
+                            <>
+                              <button
+                                onClick={() => navigateImage('prev')}
+                                className="absolute left-2 top-1/2 -translate-y-1/2 p-2 rounded-full bg-background/80 hover:bg-background border border-border shadow-lg transition-all hover:scale-110"
+                              >
+                                <IconChevronLeft className="w-5 h-5" />
+                              </button>
+                              <button
+                                onClick={() => navigateImage('next')}
+                                className="absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-full bg-background/80 hover:bg-background border border-border shadow-lg transition-all hover:scale-110"
+                              >
+                                <IconChevronRight className="w-5 h-5" />
+                              </button>
+                            </>
+                          )}
+                          
+                          {/* Delete Current Image */}
+                          <button
+                            onClick={handleRemoveCurrentImage}
+                            className="absolute top-2 right-2 p-2 rounded-full bg-destructive/90 hover:bg-destructive text-destructive-foreground shadow-lg transition-all hover:scale-110"
+                          >
+                            <IconTrash className="w-4 h-4" />
+                          </button>
+                          
+                          {/* Image Counter */}
+                          {uploadedImages.length > 1 && (
+                            <div className="absolute bottom-2 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full bg-background/80 border border-border text-xs font-medium">
+                              {currentImageIndex + 1} / {uploadedImages.length}
+                            </div>
+                          )}
+                        </div>
+                        
+                        {/* Thumbnail Strip */}
+                        <div className="flex items-center gap-2 overflow-x-auto pb-1">
+                          {uploadedImages.map((img, index) => (
+                            <button
+                              key={img.id}
+                              onClick={() => setCurrentImageIndex(index)}
+                              className={cn(
+                                "flex-shrink-0 w-14 h-14 rounded-lg overflow-hidden border-2 transition-all",
+                                index === currentImageIndex 
+                                  ? "border-primary ring-2 ring-primary/30" 
+                                  : "border-border hover:border-muted-foreground"
+                              )}
+                            >
+                              <img 
+                                src={img.preview} 
+                                alt={`Thumbnail ${index + 1}`}
+                                className="w-full h-full object-cover"
+                              />
+                            </button>
+                          ))}
+                          
+                          {/* Add More Button */}
+                          <button
+                            onClick={() => fileInputRef.current?.click()}
+                            className="flex-shrink-0 w-14 h-14 rounded-lg border-2 border-dashed border-border hover:border-muted-foreground flex items-center justify-center transition-colors"
+                          >
+                            <IconPlus className="w-5 h-5 text-muted-foreground" />
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
                       <button
-                        onClick={handleRemoveImage}
-                        className="absolute -top-2 -right-2 p-1 bg-destructive text-destructive-foreground rounded-full"
+                        type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        className="flex flex-col items-center justify-center gap-3 w-full py-8 border-2 border-dashed border-border rounded-xl hover:bg-muted/30 hover:border-muted-foreground transition-all group"
                       >
-                        <IconX className="w-4 h-4" />
+                        <div className="p-3 rounded-full bg-muted group-hover:bg-muted/80 transition-colors">
+                          <IconUpload className="w-6 h-6 text-muted-foreground" />
+                        </div>
+                        <div className="text-center">
+                          <p className="text-sm font-medium text-foreground">Upload reference images</p>
+                          <p className="text-xs text-muted-foreground mt-1">Click or drag & drop</p>
+                        </div>
                       </button>
-                    </div>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => fileInputRef.current?.click()}
-                      className="flex items-center gap-2 px-4 py-3 border border-dashed border-border rounded-xl hover:bg-muted/50 transition-colors w-full justify-center"
-                    >
-                      <IconUpload className="w-5 h-5 text-muted-foreground" />
-                      <span className="text-sm text-muted-foreground">Upload reference image</span>
-                    </button>
-                  )}
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/*"
-                    onChange={handleFileUpload}
-                    className="hidden"
-                  />
-                </div>
+                    )}
+                    
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      onChange={handleFileUpload}
+                      className="hidden"
+                    />
+                  </div>
 
-                {/* Prompt Input */}
-                <div className="mb-4">
-                  <label className="block text-sm font-medium text-muted-foreground mb-2">
-                    Image Description
-                  </label>
-                  <textarea
-                    value={imagePrompt}
-                    onChange={(e) => setImagePrompt(e.target.value)}
-                    placeholder="Describe the image you want to generate... Be specific about style, colors, and details."
-                    rows={4}
-                    className="w-full p-3 bg-secondary rounded-xl border border-border outline-none focus:ring-2 focus:ring-ring resize-none"
-                  />
-                </div>
+                  {/* Prompt Input */}
+                  <div>
+                    <label className="block text-sm font-medium text-muted-foreground mb-2">
+                      Image Description
+                    </label>
+                    <textarea
+                      value={imagePrompt}
+                      onChange={(e) => setImagePrompt(e.target.value)}
+                      placeholder="Describe what you want to generate... Be specific about style, colors, and details."
+                      rows={3}
+                      className="w-full p-4 bg-muted/50 rounded-xl border border-border outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary resize-none transition-all"
+                    />
+                  </div>
 
-                {/* Tips */}
-                <div className="mb-4 p-3 bg-muted/50 rounded-lg">
-                  <p className="text-xs text-muted-foreground">
-                    <strong>Tips:</strong> For best results, describe colors, style (cartoon, realistic, pixel art), 
-                    lighting, and mood. For Roblox icons, mention "game icon", "UI button", or "inventory icon".
-                  </p>
+                  {/* Tips */}
+                  <div className="p-4 bg-primary/5 border border-primary/10 rounded-xl">
+                    <p className="text-xs text-muted-foreground leading-relaxed">
+                      <span className="font-semibold text-primary">💡 Tips:</span> For Roblox icons, mention specific sizes like "64x64 game icon" or "inventory slot". 
+                      Include style keywords: pixel art, cartoon, realistic, neon, minimalist.
+                    </p>
+                  </div>
                 </div>
                 
-                <div className="flex justify-end gap-2">
+                {/* Modal Footer */}
+                <div className="flex justify-end gap-3 px-5 py-4 border-t border-border bg-muted/20">
                   <button
                     onClick={handleCloseModal}
-                    className="px-4 py-2 rounded-lg hover:bg-muted transition-colors"
+                    className="px-5 py-2.5 rounded-xl text-sm font-medium hover:bg-muted transition-colors"
                   >
                     Cancel
                   </button>
@@ -355,9 +495,9 @@ export const MessageComposer = forwardRef<HTMLDivElement, MessageComposerProps>(
                     onClick={handleImageGenerate}
                     disabled={!imagePrompt.trim()}
                     className={cn(
-                      "flex items-center gap-2 px-4 py-2 rounded-lg transition-colors",
+                      "flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium transition-all",
                       imagePrompt.trim()
-                        ? "bg-primary text-primary-foreground hover:bg-primary/90"
+                        ? "bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg shadow-primary/25"
                         : "bg-muted text-muted-foreground cursor-not-allowed"
                     )}
                   >
